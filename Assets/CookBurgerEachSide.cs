@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class CookBurgerEachSide : MonoBehaviour
 {
+    public ParticleSystem fireEffect; // Reference to the particle system
+
     private Color startColor1;   // Original color of the first side of the burger
     private Color startColor2;   // Original color of the second side of the burger
     public Color cookedColor = Color.black;  // Final darker color of the burger meat
@@ -11,9 +13,11 @@ public class CookBurgerEachSide : MonoBehaviour
 
     private Renderer burgerRenderer;
     private bool isCooking = false; // Flag to indicate cooking status
-    private float cookingProgress1 = 0f; // Progress of the cooking effect
-    private float cookingProgress2 = 0f; // Progress of the cooking effect
+    private float cookingProgress1 = 0f; // Progress of the cooking effect for side 1
+    private float cookingProgress2 = 0f; // Progress of the cooking effect for side 2
     private bool isFacingUp = false; // To track which side is facing the heater
+    private bool fireEffectStarted = false; // Flag to prevent multiple fire effects
+
 
     void Start()
     {
@@ -29,11 +33,26 @@ public class CookBurgerEachSide : MonoBehaviour
         {
             startColor2 = burgerRenderer.materials[0].color; // Second side
         }
+
+        // Find the particle system if it hasn't been assigned in the inspector
+        if (fireEffect == null)
+        {
+            fireEffect = GetComponentInChildren<ParticleSystem>();  // Automatically find it in child objects
+        }
+
+        // Ensure the fire effect is off at the start
+        if (fireEffect != null)
+        {
+            fireEffect.Stop();
+        }
+        else
+        {
+            Debug.LogWarning("Fire effect particle system not found.");
+        }
     }
 
     void OnCollisionEnter(Collision collision)
     {
-        // Check if the collided object has the "Heater" tag
         if (collision.gameObject.CompareTag("heater"))
         {
             isCooking = true; // Start changing color
@@ -42,65 +61,69 @@ public class CookBurgerEachSide : MonoBehaviour
 
     void OnCollisionExit(Collision collision)
     {
-        // Stop cooking when the burger is no longer colliding with the heater
         if (collision.gameObject.CompareTag("heater"))
         {
             isCooking = false; // Stop changing color
-            //ResetColors(); // Reset colors back to original
         }
     }
 
     void Update()
     {
-        // Check which way the burger is facing
         if (isCooking)
         {
-            // Determine if the burger is facing up or down
-            if (Vector3.Dot(transform.up, Vector3.up) > 0.5f) // Facing up
+            if (Vector3.Dot(transform.up, Vector3.up) >= 0.5f)
             {
                 isFacingUp = true;
-                Debug.Log("Burger is facing up.");
             }
-            else if (Vector3.Dot(transform.up, Vector3.down) > 0.5f) // Facing down
+            else if (Vector3.Dot(transform.up, Vector3.down) > 0.5f)
             {
                 isFacingUp = false;
-                Debug.Log("Burger is facing down.");
             }
 
-            
-
-            // Change the color based on the facing side
             if (isFacingUp)
             {
-                // Gradually darken the color while the burger is cooking
                 cookingProgress1 += cookingSpeed * Time.deltaTime;
-
-                // Clamp the cooking progress so it doesn't exceed 1
                 cookingProgress1 = Mathf.Clamp01(cookingProgress1);
                 burgerRenderer.materials[1].color = Color.Lerp(startColor1, cookedColor, cookingProgress1);
             }
             else
             {
-                // Gradually darken the color while the burger is cooking
                 cookingProgress2 += cookingSpeed * Time.deltaTime;
-
-                // Clamp the cooking progress so it doesn't exceed 1
                 cookingProgress2 = Mathf.Clamp01(cookingProgress2);
                 burgerRenderer.materials[0].color = Color.Lerp(startColor2, cookedColor, cookingProgress2);
+            }
+
+            if (fireEffectStarted)
+            {
+                float cookprogmax = cookingProgress1;
+                if (cookingProgress2 > cookprogmax)
+                {
+                    cookprogmax = cookingProgress2;
+                }
+                //cookingProgress1 += cookingSpeed * Time.deltaTime;
+                //cookingProgress1 = Mathf.Clamp01(cookingProgress1);
+                burgerRenderer.materials[1].color = Color.Lerp(startColor1, cookedColor, cookprogmax);
+                //cookingProgress2 += cookingSpeed * Time.deltaTime;
+                //cookingProgress2 = Mathf.Clamp01(cookingProgress2);
+                burgerRenderer.materials[0].color = Color.Lerp(startColor2, cookedColor, cookprogmax);
+            }
+
+            // Check if one side is fully cooked (i.e., fully black)
+            if ((cookingProgress1 >= 1f || cookingProgress2 >= 1f) && !fireEffectStarted)
+            {
+                StartFireEffect();
             }
         }
     }
 
-    private void ResetColors()
+    private void StartFireEffect()
     {
-        // Reset the colors of both sides to their original colors
-        //if (burgerRenderer.materials.Length > 0)
-        //{
-        //    burgerRenderer.materials[1].color = startColor1;
-        //}
-        //if (burgerRenderer.materials.Length > 1)
-        //{
-        //    burgerRenderer.materials[0].color = startColor2;
-        //}
+        if (fireEffect != null && !fireEffect.isPlaying)
+        {
+            fireEffect.Play();  // Start the fire particle system
+            fireEffectStarted = true;
+            Debug.Log("Fire effect started.");
+        }
     }
 }
+
