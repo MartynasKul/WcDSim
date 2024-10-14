@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 2
   tags:
   - chair
+  - Burger meat
+  - heater
   layers:
   - Default
   - TransparentFX
