@@ -7,6 +7,11 @@ TagManager:
   - chair
   - Burger meat
   - heater
+  - Patty
+  - BottomBun
+  - TopBun
+  - Burger
+  - NPC
   layers:
   - Default
   - TransparentFX
