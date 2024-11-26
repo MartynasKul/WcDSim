@@ -146,5 +146,13 @@ public class CookBurgerEachSide : MonoBehaviour
             audio.Play();
         }
     }
+
+    public (Color side1Color, Color side2Color) GetCurrentColors()
+    {
+        // Calculate the current colors for each side based on their respective cooking progress
+        Color side1Color = Color.Lerp(startColor1, cookedColor, cookingProgress1);
+        Color side2Color = Color.Lerp(startColor2, cookedColor, cookingProgress2);
+        return (side1Color, side2Color);
+    }
 }
 
