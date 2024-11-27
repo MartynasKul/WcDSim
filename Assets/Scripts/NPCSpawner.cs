@@ -9,7 +9,7 @@ public class NPCSpawner : MonoBehaviour
     public Transform counterPoint;
     public Transform exitPoint;
     public float spawnInterval = 10f;
-    public int maxNpcs = 10;
+    public int maxNpcs = 2;
     public int npcnum=0;
 
     // Start is called before the first frame update
@@ -32,6 +32,7 @@ public class NPCSpawner : MonoBehaviour
             }
             else
             {
+                break;
                 Debug.Log("TOO MANY NPC MAN STOP PLZ");
             }
             

@@ -12,6 +12,11 @@ TagManager:
   - TopBun
   - Burger
   - NPC
+  - Cheese
+  - Tomato
+  - CheeseBurger
+  - TomatoBurger
+  - CheeseAndTomatoBurger
   layers:
   - Default
   - TransparentFX

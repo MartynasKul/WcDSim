@@ -7,7 +7,7 @@ public class TraySpawner : MonoBehaviour
 {
     public GameObject itemPrefab;
     public Transform spawnPoint;
-    public float spawnCooldown = 2f;
+    public float spawnCooldown = 3f;
     public int maxItems = 99;
     private float lastSpawnTime = -Mathf.Infinity;
     private List<GameObject> spawnedItems = new List<GameObject>(); // List to keep track of spawned items
