@@ -17,6 +17,8 @@ TagManager:
   - CheeseBurger
   - TomatoBurger
   - CheeseAndTomatoBurger
+  - PotatoRaw
+  - PotatoFries
   layers:
   - Default
   - TransparentFX

@@ -201,7 +201,7 @@ NavMeshAgent:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1944608032401145287}
-  m_Enabled: 1
+  m_Enabled: 0
   m_AgentTypeID: 0
   m_Radius: 0.5
   m_Speed: 3.5
@@ -347,13 +347,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8bd6acdc466484f468c2ab9f57a7821c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnPoint: {fileID: 0}
-  counterPoint: {fileID: 0}
-  exitPoint: {fileID: 0}
   entrySound: {fileID: 3712344072765731511}
-  waitTimeAtCounter: 400
+  exitPoint: {fileID: 0}
+  moveSpeed: 3
   orderCanvas: {fileID: 6248577137382359477}
-  spacing: 1.5
+  waitTimeAtCounter: 400
 --- !u!65 &3617743228649094618
 BoxCollider:
   m_ObjectHideFlags: 0
