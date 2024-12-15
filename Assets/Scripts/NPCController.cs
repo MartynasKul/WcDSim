@@ -1,27 +1,26 @@
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.UI;
 
 public class NPCController : MonoBehaviour
 {
-    public Transform spawnPoint;
-    public Transform counterPoint;
-    public Transform exitPoint;
     public AudioSource entrySound;
-    public float waitTimeAtCounter = 15f;
+
+    public Transform exitPoint; // Assigned by NPCSpawner
+    public float moveSpeed = 3f;
     public Canvas orderCanvas; // Reference to the NPC's canvas
-    public float spacing = 1.5f; // Distance between NPCs at the counter
-    private NavMeshAgent agent;
+    public float waitTimeAtCounter = 15f;
 
-    private static List<Vector3> occupiedCounterPositions = new List<Vector3>(); // Shared by all NPCs
+    private List<Transform> queuePositions; // Assigned by NPCSpawner
+    private int currentQueueIndex = -1; // NPC's current queue position index
+    private Vector3 targetPosition; // Current movement target
 
-    private enum NPCState { Entering, Waiting, Exiting }
-    private NPCState currentState;
-
-    private Vector3 assignedCounterPosition;
+    private enum NPCState { MovingToQueue, AtCounter, Exiting }
+    private NPCState currentState = NPCState.MovingToQueue;
 
     private Dictionary<string, int> burgerOrder = new Dictionary<string, int>();
     private Dictionary<string, int> completedOrder = new Dictionary<string, int>();
@@ -30,46 +29,129 @@ public class NPCController : MonoBehaviour
         { "Burger", 1.00m },
         { "CheeseBurger", 1.50m },
         { "TomatoBurger", 1.50m },
-        { "CheeseAndTomatoBurger", 2.00m }
+        { "CheeseAndTomatoBurger", 2.00m },
+        { "PotatoFries", 1.00m}
     };
 
     private TextMeshProUGUI orderText;// Reference to the TextMeshPro component
 
+    public void Initialize(List<Transform> queuePositions, Transform exitPoint)
+    {
+        this.queuePositions = queuePositions;
+        this.exitPoint = exitPoint;
+
+        // Assign the first available queue position (e.g., P1)
+        AssignQueuePosition();
+        MoveToPosition(targetPosition);
+    }
+
     void Start()
     {
-        agent = GetComponent<NavMeshAgent>();
-        assignedCounterPosition = GetAvailableCounterPosition(counterPoint.position);
-        currentState = NPCState.Entering;
-        agent.SetDestination(assignedCounterPosition);
-        entrySound?.Play();
-
-        GenerateRandomOrder();
-
-        // Ensure the canvas is initially hidden
         if (orderCanvas != null)
         {
             // Find the TextMeshProUGUI component
             orderText = orderCanvas.GetComponent<TextMeshProUGUI>();
-            if (orderText != null)
-            {
-                orderText.enabled = false; // Hide the text initially
-            }
-            else
-            {
-                Debug.LogError("TextMeshProUGUI component not found on the canvas!");
-            }
+            if (orderText != null)  orderText.enabled = false;
+            else Debug.LogError("TextMeshProUGUI component not found on the canvas!");
         }
-        else
-        {
-            Debug.LogError("Order canvas is not assigned!");
-        }
+        else Debug.LogError("Order canvas is not assigned!");
 
-        Debug.Log($"{gameObject.name} is entering the store, heading to {assignedCounterPosition}.");
+        entrySound?.Play();
+        GenerateRandomOrder();
+        Debug.Log($"{gameObject.name} is entering the store, heading to {targetPosition}.");
     }
 
+    void Update()
+    {
+         switch (currentState)
+        {
+            case NPCState.MovingToQueue:
+                MoveToPosition(targetPosition);
+
+                if (Vector3.Distance(transform.position, targetPosition) < 0.1f)
+                {
+                    if (currentQueueIndex == queuePositions.Count - 1)
+                    {
+                        StartCoroutine(ProcessOrder());
+                        currentState = NPCState.AtCounter;
+                    }
+                    else if (currentQueueIndex + 1 < queuePositions.Count && !IsPositionOccupied(currentQueueIndex + 1))
+                    {
+                        currentQueueIndex++;
+                        targetPosition = queuePositions[currentQueueIndex].position;
+                    }
+                }
+                break;
+
+            case NPCState.Exiting:
+                MoveToPosition(exitPoint.position);
+
+                if (Vector3.Distance(transform.position, exitPoint.position) < 0.1f)
+                {
+                    Destroy(gameObject);
+                }
+                break;
+        }
+    }
+    private void MoveToTarget(Vector3 target)
+    {
+        transform.position = Vector3.MoveTowards(transform.position, target, moveSpeed * Time.deltaTime);
+    }
+
+    private void MoveToPosition(Vector3 targetPosition)
+    {
+        transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * Time.deltaTime);
+    }
+
+    private void AssignQueuePosition()
+    {
+        for (int i = 0; i < queuePositions.Count; i++)
+        {
+            if (!IsPositionOccupied(i))
+            {
+                currentQueueIndex = i;
+                targetPosition = queuePositions[i].position;
+                return;
+            }
+        }
+
+        Debug.LogWarning($"{gameObject.name}: No available queue position!");
+    }
+    private void CheckQueueProgression()
+    {
+        // Check if close enough to the current position
+        if (Vector3.Distance(transform.position, targetPosition) < 0.1f)
+        {
+            // If at the counter, start processing
+            if (currentQueueIndex == queuePositions.Count - 1) // At CT
+            {
+                StartCoroutine(ProcessOrder());
+                currentState = NPCState.AtCounter;
+                return;
+            }
+
+            // Check if the next position is empty
+            if (currentQueueIndex + 1 < queuePositions.Count && !IsPositionOccupied(currentQueueIndex + 1))
+            {
+                currentQueueIndex++;
+                targetPosition = queuePositions[currentQueueIndex].position;
+            }
+        }
+    }
+
+    private bool IsPositionOccupied(int index)
+    {
+        Collider[] colliders = Physics.OverlapSphere(queuePositions[index].position, 0.5f);
+        foreach (Collider col in colliders)
+        {
+            if (col.gameObject != this.gameObject && col.CompareTag("NPC"))
+                return true;
+        }
+        return false;
+    }
     private void GenerateRandomOrder()
     {
-        string[] possibleBurgerTypes = { "Burger", "CheeseBurger", "TomatoBurger", "CheeseAndTomatoBurger" };
+        string[] possibleBurgerTypes = { "Burger", "CheeseBurger", "TomatoBurger", "CheeseAndTomatoBurger", "PotatoFries" };
         int burgerCount = Random.Range(1, 4); // Randomly choose between 1 and 3 burgers
 
         for (int i = 0; i < burgerCount; i++)
@@ -87,29 +169,20 @@ public class NPCController : MonoBehaviour
         }
     }
 
-    private Vector3 GetAvailableCounterPosition(Vector3 basePosition)
+    private IEnumerator ProcessOrder()
     {
-        Vector3 offset = Vector3.zero;
-        for (int i = 0; i < occupiedCounterPositions.Count + 1; i++)
-        {
-            offset = new Vector3((i % 3) * spacing, 0, (i / 3) * spacing); // Calculate grid-like offset
-            Vector3 potentialPosition = basePosition + offset;
-            if (!occupiedCounterPositions.Contains(potentialPosition)) // Ensure it's not already taken
-            {
-                occupiedCounterPositions.Add(potentialPosition);
-                return potentialPosition;
-            }
-        }
-        return basePosition;
+        Debug.Log($"{gameObject.name}: Processing order at counter.");
+        orderCanvas.enabled = true;
+        orderText.enabled = true;
+        UpdateOrderCanvas();
+
+        yield return new WaitForSeconds(waitTimeAtCounter);
+
+        Debug.Log($"{gameObject.name}: Order complete. Exiting.");
+        currentState = NPCState.Exiting;
+        targetPosition = exitPoint.position;
     }
 
-    private void ReleaseCounterPosition()
-    {
-        if (occupiedCounterPositions.Contains(assignedCounterPosition))
-        {
-            occupiedCounterPositions.Remove(assignedCounterPosition);
-        }
-    }
 
     public void OnTriggerEnter(Collider other)
     {
@@ -187,37 +260,9 @@ public class NPCController : MonoBehaviour
         }
     }
 
-    void Update()
+    private void MoveToTarget()
     {
-        switch (currentState)
-        {
-            case NPCState.Entering:
-                if (Vector3.Distance(transform.position, assignedCounterPosition) < 2f)
-                {
-                    currentState = NPCState.Waiting;
-                    StartCoroutine(WaitForBurger());
-
-                    if (orderCanvas != null)
-                    {
-                        orderCanvas.enabled = true;
-                        orderText.enabled = true;
-                        UpdateOrderCanvas(); // Show the initial order
-                    }
-                }
-                break;
-
-            case NPCState.Waiting:
-                // Waiting state logic
-                break;
-
-            case NPCState.Exiting:
-                if (Vector3.Distance(transform.position, exitPoint.position) < 2f)
-                {
-                    ReleaseCounterPosition();
-                    Destroy(gameObject); // Remove NPC once they reach the exit
-                }
-                break;
-        }
+        transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed*Time.deltaTime);
     }
 
     IEnumerator WaitForBurger()
@@ -255,11 +300,9 @@ public class NPCController : MonoBehaviour
     private void ExitStore()
     {
         currentState = NPCState.Exiting;
-        agent.SetDestination(exitPoint.position);
+        targetPosition = exitPoint.position;
 
         if (orderCanvas != null)
             orderCanvas.enabled = false; // Hide the canvas when exiting
     }
 }
-
-
